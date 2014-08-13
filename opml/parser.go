@@ -5,12 +5,12 @@ import (
 	"encoding/xml"
 )
 
-func ParseOpml(reader io.Reader) (Opml, error) {
+func ParseOpml(reader io.Reader) (*Opml, error) {
 	decoder := xml.NewDecoder(reader)
 	var opml Opml
 	if err := decoder.Decode(&opml); err != nil {
-		return Opml{}, err
+		return nil, err
 	}
 
-	return opml, nil
+	return &opml, nil
 }
