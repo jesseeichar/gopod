@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"bytes"
 	"regexp"
+	"strings"
 )
 
 func TestParseRss(t *testing.T) {
@@ -85,5 +86,43 @@ func checkItem(t *testing.T, index int, items []Item, expected Item) {
 		if actualDesc != expectedDesc {
 			t.Errorf("Item[%d] does not have the correct Description: \n%q\n%q", index, expectedDesc, actualDesc)
 		}
+	}
+}
+
+func Test_WriteReadCycle(t *testing.T) {
+	original := Rss{
+		Channel: Channel{
+			Title: "ChannelTitle",
+			Description: "ChannelDescription",
+			LastBuildDate: "Mon, 01 Aug 2014 21:20:36 +0000",
+			Items: []Item{
+				Item{
+					Title: "ItemTitle",
+					Link: "http://item.link",
+					Description: "ItemDescription",
+					PubDate: "Mon, 11 Aug 2014 21:20:36 +0000",
+					Category: "tech",
+					Guid: "guid"}}}}
+
+	parsed, err := ParseRss(strings.NewReader(original.String()))
+
+	if err != nil {
+		t.Fatalf("Error occurred during parsing of rss: %q", err.Error())
+	}
+
+	if original.Channel.Title != parsed.Channel.Title {
+		t.Errorf("Titles don't match:\n%q\n%q", original.Channel.Title, parsed.Channel.Title)
+	}
+
+	if original.Channel.Description != parsed.Channel.Description {
+		t.Errorf("Descriptions don't match:\n%q\n%q", original.Channel.Description, parsed.Channel.Description)
+	}
+
+	if original.Channel.LastBuildDate != parsed.Channel.LastBuildDate {
+		t.Errorf("LastBuildDates don't match:\n%q\n%q", original.Channel.LastBuildDate, parsed.Channel.LastBuildDate)
+	}
+
+	for i, item := range original.Channel.Items {
+		checkItem(t, i, parsed.Channel.Items, item)
 	}
 }

@@ -33,8 +33,8 @@ type Media struct {
 	Type string `xml:"type,attr"`
 }
 type Enclosure struct {
-	Url  string `xml:"url,attr"`
-	Type string `xml:"type,attr"`
+	Url    string `xml:"url,attr"`
+	Type   string `xml:"type,attr"`
 	Length string `xml:"length,attr"`
 }
 

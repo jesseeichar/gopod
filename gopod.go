@@ -1,69 +1,84 @@
 package main
 
 import (
-	"os"
-	"os/user"
-	"path"
-	"fmt"
-	"gopod/opml"
 	"io"
 	"log"
+	"gopod/opml"
+	"gopod/config"
+	"bufio"
+	"os"
+	"gopod/rss"
 )
 
-const (
-	GO_POD_DIR                = ".gopod"
-	GO_POD_SUBSCRIPTIONS_FILE = "subscriptions.opml"
-)
+func backupConfigFile(configDirPath string) {
+	configFile := config.ConfigFile(configDirPath)
+	defer configFile.Close()
 
-func main() {
-	user, lookupErr := user.Current()
-	if lookupErr != nil {
-		panic("Unable to find current user due to error: " + lookupErr.Error())
-	}
-	configDir := openOrCreate(path.Join(user.HomeDir, GO_POD_DIR), func(path string) (*os.File, error) {
-			os.MkdirAll(path, os.ModeDir)
-			return os.Open(path)
-		})
-	defer configDir.Close()
+	backupFile := config.BackupConfigFile(configDirPath)
+	defer backupFile.Close()
 
-	subscriptionsFile := openOrCreate(path.Join(configDir.Name(), GO_POD_SUBSCRIPTIONS_FILE), func(path string) (*os.File, error) {
-			file, err := os.Create(path)
-			if err != nil {
-				return file, err
-			}
-			emptySubscription := opml.New()
-			_, err = emptySubscription.Write(file)
-
-			if err != nil {
-				return nil, err
-			}
-			if err := file.Close(); err != nil {
-				panic("Unable to flush subscriptions file on creation of an empty file: " + file.Name() + ". Error: " + err.Error())
-			}
-
-			return os.Open(path)
-		})
-	defer subscriptionsFile.Close()
-
-	subscriptions, err := opml.ParseOpml(subscriptionsFile)
-	if err == io.EOF {
-		log.Fatal("Subscriptions file is not valid, file terminated unexpectedly.  Make sure that the file has a valid OPML format: " + subscriptionsFile.Name())
-	} else if err != nil {
-		panic("Unable to parse the subscriptions file: " + subscriptionsFile.Name() + " due to " + err.Error())
+	n, err := bufio.NewReader(configFile).WriteTo(backupFile)
+	if err != nil {
+		panic("Error backing up subscriptions file: " + err.Error())
 	}
 
-	fmt.Print(subscriptions)
+	log.Printf("Write %d bytes from original subscription file to backup file.\n", n)
 }
 
-func openOrCreate(configDirName string, createFunc func(string) (*os.File, error)) *os.File {
-	if dir, err := os.Open(configDirName); os.IsNotExist(err) {
-		if dir, err = createFunc(configDirName); err != nil {
-			panic("Unable to create: " + configDirName)
-		}
-		return dir
-	} else if err == nil {
-		return dir
-	} else {
-		panic("Unable to open " + configDirName)
+func loadConfig() (configModel *opml.Opml, configFilePath string) {
+	configDirPath := config.ConfigPathInUserHome();
+
+	backupConfigFile(configDirPath)
+
+	configFile := config.ConfigFile(configDirPath)
+	defer configFile.Close()
+
+
+	opmlModel, err := opml.ParseOpml(configFile)
+	if err == io.EOF {
+		log.Fatal("Subscriptions file is not valid, file terminated unexpectedly.  Make sure that the file has a valid OPML format: " + configFile.Name())
+	} else if err != nil {
+		panic("Unable to parse the subscriptions file: " + configFile.Name() + " due to " + err.Error())
 	}
+
+	return opmlModel, configFile.Name();
+}
+func download(index int, configModel *opml.Opml, doneChannel chan bool) {
+	defer func() {doneChannel <- true}()
+
+	subscription := &configModel.Body.Outline[index]
+	rss.Download(configModel.Head, subscription)
+}
+func writeUpdatedConfig(configModel *opml.Opml, configFile string) {
+	file, err := os.Create(configFile)
+
+	if err != nil {
+		panic("Unable to create/truncate config file: " + err.Error())
+	}
+
+	if _, err = configModel.Write(file); err != nil {
+		panic("Unable to write updated config file: " + err.Error())
+	}
+}
+func main() {
+
+	configModel, configFile := loadConfig()
+
+	if configModel.Head.DownloadDir == "" {
+		log.Fatalf("There is no DownloadDir element defined in head of %s", configFile)
+	}
+
+	if configModel.Head.DefaultKeep == 0 {
+		configModel.Head.DefaultKeep = 1;
+	}
+	done := make(chan bool)
+	for i, _ := range configModel.Body.Outline {
+		go download(i, configModel, done)
+	}
+
+	for i := 0; i < len(configModel.Body.Outline); i++ {
+		<-done
+	}
+
+	writeUpdatedConfig(configModel, configFile)
 }

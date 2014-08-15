@@ -5,7 +5,7 @@ import (
 	"encoding/xml"
 )
 
-func ParseRss(reader io.Reader)(*Rss, error) {
+func ParseRss(reader io.Reader) (*Rss, error) {
 	decoder := xml.NewDecoder(reader)
 	var rss Rss
 	if err := decoder.Decode(&rss); err != nil {

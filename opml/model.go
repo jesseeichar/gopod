@@ -9,18 +9,22 @@ import (
 
 type OpmlHead struct {
 	DateCreated string `xml:"dateCreated"`
+	DefaultKeep int
+	DownloadDir string
 }
 
 type OpmlOutline struct {
-	XmlUrl string `xml:"xmlUrl,attr"`
+	XmlUrl     string `xml:"xmlUrl,attr"`
+	Keep       int
+	LastUpdate string
 }
 
 type OpmlBody struct {
 	Outline []OpmlOutline `xml:"outline"`
 }
 type Opml struct {
-	Head OpmlHead `xml:"head"`
-	Body OpmlBody  `xml:"body"`
+	Head    OpmlHead `xml:"head"`
+	Body    OpmlBody  `xml:"body"`
 	Version string  `xml:"version,attr"`
 }
 
