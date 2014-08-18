@@ -1,9 +1,9 @@
 package rss
 
 import (
+	"bytes"
 	"encoding/xml"
 	"io"
-	"bytes"
 )
 
 type Rss struct {
@@ -18,14 +18,14 @@ type Channel struct {
 }
 
 type Item struct {
-	Title            string `xml:"title"`
-	Link             string `xml:"link"`
-	Description      string `xml:"description"`
-	PubDate          string `xml:"pubDate"`
-	Category         string `xml:"category"`
-	Guid             string `xml:"guid"`
-	Enclosure        Enclosure `xml:"enclosure"`
-	Media            Media `xml:"http://search.yahoo.com/mrss/ content"`
+	Title       string    `xml:"title"`
+	Link        string    `xml:"link"`
+	Description string    `xml:"description"`
+	PubDate     string    `xml:"pubDate"`
+	Category    string    `xml:"category"`
+	Guid        string    `xml:"guid"`
+	Enclosure   Enclosure `xml:"enclosure"`
+	Media       Media     `xml:"http://search.yahoo.com/mrss/ content"`
 }
 
 type Media struct {

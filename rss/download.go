@@ -1,20 +1,32 @@
 package rss
 
 import (
-	"net/http"
 	"bufio"
-	"log"
-	"fmt"
-	"io/ioutil"
 	"bytes"
+	"fmt"
 	"gopod/opml"
-	"path/filepath"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+	"regexp"
 )
+type ContentType string
+const (
+	audio ContentType = "audio"
+	video  = "video"
+	unknown = "unknown"
+)
+var pathCleanUpRegexp = regexp.MustCompile(`[^a-zA-Z0-9_\-&^!+=\)\(\[\].]`)
 
-func contentTypeToExt(podcastItem Item) (ext string, err error) {
+func cleanPath(path string) string {
+	cleaned := pathCleanUpRegexp.ReplaceAll([]byte(path), []byte("+"))
+	return string(cleaned)
+}
+func contentTypeToExt(podcastItem Item) (ext string, ctype ContentType, err error) {
 
 	contentType := podcastItem.Enclosure.Type
 
@@ -23,21 +35,25 @@ func contentTypeToExt(podcastItem Item) (ext string, err error) {
 	}
 
 	if !strings.Contains(contentType, "/") {
-		return "", fmt.Errorf("Unable to determine the extension of the file")
+		return "", unknown, fmt.Errorf("Unable to determine the extension of the file")
 	}
 
 	parts := strings.Split(contentType, "/")
 
 	switch parts[1] {
-	case "mpeg" : return "mp3", nil
-	case "mp3" : return "mp3", nil
+	case "mpeg":
+		fallthrough
+	case "mp3":
+		return "mp3", audio, nil
+	case "mp4":
+		return "mp4", video, nil
 	}
 
-	return "", fmt.Errorf("Unable to figure out extension %s", parts[1])
+	return "", unknown, fmt.Errorf("Unable to figure out extension %s", parts[1])
 }
 
 func parseTime(dateString string) (date time.Time, err error) {
-	formats := []string {time.RFC1123Z, time.RFC1123, time.ANSIC, time.UnixDate, time.RubyDate, time.RFC822, time.RFC822Z}
+	formats := []string{time.RFC1123Z, time.RFC1123, time.ANSIC, time.UnixDate, time.RubyDate, time.RFC822, time.RFC822Z}
 	for _, format := range formats {
 		date, err = time.Parse(format, dateString)
 		if err == nil {
@@ -45,7 +61,8 @@ func parseTime(dateString string) (date time.Time, err error) {
 		}
 	}
 
-	return date, nil;
+	oneYearAgo, _ := time.ParseDuration("-8760h")
+	return time.Now().Add(oneYearAgo), nil
 }
 
 func needsUpdate(item Item, outline *opml.OpmlOutline) bool {
@@ -59,6 +76,26 @@ func needsUpdate(item Item, outline *opml.OpmlOutline) bool {
 	}
 
 	return lastUpdate.Before(pubDate)
+}
+
+func createPodcastDir(head opml.OpmlHead, rssModel *Rss, podcastItem Item) (podcastDir, ext string, err error) {
+
+	ext, contentType, err := contentTypeToExt(podcastItem)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	podcastDir = filepath.Join(head.DownloadDir, string(contentType), cleanPath(rssModel.Channel.Title))
+
+	err = os.MkdirAll(podcastDir, os.ModeDir)
+
+	if err != nil {
+		return "", "", fmt.Errorf("Failed to make podcast directory %q", podcastDir)
+	}
+
+
+	return podcastDir, ext, nil
 }
 
 func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloaded int, err error) {
@@ -89,14 +126,6 @@ func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloa
 		return 0, nil
 	}
 
-	podcastDir := filepath.Join(head.DownloadDir, rssModel.Channel.Title)
-
-	err = os.MkdirAll(podcastDir, os.ModeDir)
-
-	if err != nil {
-		return 0, fmt.Errorf("Failed to make podcast directory %q", podcastDir)
-	}
-
 	downloadCount := 0
 	keep := outline.Keep
 	if keep == 0 {
@@ -117,37 +146,46 @@ func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloa
 			return 0, fmt.Errorf("No url was found for this podcast: %q\n", rssModel.Channel.Title)
 		}
 
-		log.Printf("Downloading podcast: %q from url %q\n", podcastItem.Title, postcastUrl)
-		resp, err = http.Get(postcastUrl)
-
-		if err != nil {
-			log.Printf("An error occurred downloading podcast: '%v'\n\n", err)
-			return downloadCount, err
-		}
-
-		podcast := resp.Body
-		defer podcast.Close()
-
-		ext, err := contentTypeToExt(podcastItem)
-
+		podcastDir, ext, err := createPodcastDir(head, rssModel, podcastItem)
 		if err != nil {
 			return downloadCount, err
 		}
 
-		dest, err := os.Create(filepath.Join(podcastDir, podcastItem.Title+"."+ext))
-		defer dest.Close()
+		podcastFile := filepath.Join(podcastDir, cleanPath(podcastItem.Title)+"."+ext)
 
-		if err != nil {
-			return downloadCount, fmt.Errorf("Unable to create file for podcast: %v", podcastItem)
+		fi, err := os.Stat(podcastFile)
+
+		if os.IsExist(err) && fi.Size() > 0 {
+			log.Printf("Podcast has been previously downloaded, Skipping download of %s\n", podcastItem.Title)
+		} else {
+
+			dest, err := os.Create(podcastFile)
+			defer dest.Close()
+
+			if err != nil {
+				return downloadCount, fmt.Errorf("Unable to create file for podcast: %v", podcastItem)
+			}
+
+
+
+			log.Printf("Downloading podcast: %q from url %q\n", podcastItem.Title, postcastUrl)
+			resp, err = http.Get(postcastUrl)
+
+			if err != nil {
+				log.Printf("An error occurred downloading podcast: '%v'\n\n", err)
+				return downloadCount, err
+			}
+
+			podcast := resp.Body
+			defer podcast.Close()
+
+			n, err := bufio.NewReader(podcast).WriteTo(dest)
+			log.Printf("Downloaded file with size: %d to %s\n", n, dest.Name())
+
+			if err != nil {
+				return downloadCount, err
+			}
 		}
-
-		n, err := bufio.NewReader(podcast).WriteTo(dest)
-		log.Printf("Downloaded file with size: %d to %s\n", n, dest.Name())
-
-		if err != nil {
-			return downloadCount, err
-		}
-
 		downloadCount++
 	}
 
@@ -155,4 +193,3 @@ func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloa
 
 	return downloadCount, nil
 }
-

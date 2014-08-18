@@ -1,8 +1,8 @@
 package opml
 
 import (
-	"testing"
 	"bytes"
+	"testing"
 )
 
 func TestParseOpml(t *testing.T) {
@@ -39,7 +39,6 @@ func TestParseOpml(t *testing.T) {
 	}
 }
 
-
 func TestWriteOpml(t *testing.T) {
 	model := New()
 	model.Head.DateCreated = "Today"
@@ -67,7 +66,6 @@ func equal(o1, o2 *Opml, t *testing.T) {
 		t.Fatalf("Opml Version differ: \n%v\n%v\n", o1.Head, o2.Head)
 	}
 
-
 	if len(o1.Body.Outline) != len(o2.Body.Outline) {
 		t.Fatalf("Opml Outline lengths differ: \n%v\n%v\n", o1.Body.Outline, o2.Body.Outline)
 	}
@@ -80,6 +78,4 @@ func equal(o1, o2 *Opml, t *testing.T) {
 		}
 	}
 
-
 }
-

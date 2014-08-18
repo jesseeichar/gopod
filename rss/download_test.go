@@ -1,14 +1,14 @@
 package rss
 
 import (
-	"testing"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"gopod/opml"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"testing"
 )
 
 func servers(rssModel string) (*httptest.Server, *httptest.Server) {
@@ -28,7 +28,7 @@ func download(updateRss func(Rss), outline *opml.OpmlOutline) (rss Rss, download
 		Channel{
 			Title: "Test Podcast",
 			Items: []Item{{
-				Title: "Podcast Item 1",
+				Title:   "Podcast Item 1",
 				PubDate: "Mon, 11 Aug 2014 21:20:36 +0000"}}}}
 
 	rssModel.Channel.Items[0].Enclosure.Type = "audio/mpeg"
@@ -53,11 +53,11 @@ func download(updateRss func(Rss), outline *opml.OpmlOutline) (rss Rss, download
 }
 
 func Test_DownloadEnclosureHasUrl(t *testing.T) {
-	outline := &opml.OpmlOutline{LastUpdate:"Mon, 10 Aug 2014 21:20:36 +0000"}
+	outline := &opml.OpmlOutline{LastUpdate: "Mon, 10 Aug 2014 21:20:36 +0000"}
 
 	rssModel, downloadDir, downloaded, err := download(func(rssModel Rss) {
-			rssModel.Channel.Items[0].Enclosure.Url = "%s"
-		}, outline)
+		rssModel.Channel.Items[0].Enclosure.Url = "%s"
+	}, outline)
 
 	if err != nil {
 		t.Fatal(err)
@@ -97,8 +97,8 @@ func Test_DownloadMediaHasUrl(t *testing.T) {
 	outline := &opml.OpmlOutline{}
 
 	rssModel, downloadDir, downloaded, err := download(func(rssModel Rss) {
-			rssModel.Channel.Items[0].Media.Url = "%s"
-		}, outline)
+		rssModel.Channel.Items[0].Media.Url = "%s"
+	}, outline)
 
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +107,6 @@ func Test_DownloadMediaHasUrl(t *testing.T) {
 	if downloaded != 1 {
 		t.Errorf("Expected 1 episode to be downloaded: %d", downloaded)
 	}
-
 
 	downloadDirFile, err := os.Open(filepath.Join(downloadDir, rssModel.Channel.Title))
 	if err != nil {
@@ -132,9 +131,9 @@ func Test_DownloadIsUpToDate(t *testing.T) {
 	outline := &opml.OpmlOutline{}
 
 	rssModel, downloadDir, downloaded, err := download(func(rssModel Rss) {
-			rssModel.Channel.Items[0].Media.Url = "%s"
-			outline.LastUpdate = rssModel.Channel.Items[0].PubDate
-		}, outline)
+		rssModel.Channel.Items[0].Media.Url = "%s"
+		outline.LastUpdate = rssModel.Channel.Items[0].PubDate
+	}, outline)
 
 	if err != nil {
 		t.Fatal(err)
@@ -144,10 +143,8 @@ func Test_DownloadIsUpToDate(t *testing.T) {
 		t.Errorf("Expected 0 episodes to be downloaded: %d", downloaded)
 	}
 
-
 	_, err = os.Open(filepath.Join(downloadDir, rssModel.Channel.Title))
 	if os.IsExist(err) {
 		t.Fatalf("Should not have created the podcast dir if no files were downloaded: %v", err)
 	}
 }
-

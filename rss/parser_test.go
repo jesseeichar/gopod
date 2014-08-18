@@ -1,11 +1,11 @@
 package rss
 
 import (
-	"testing"
-	"io/ioutil"
 	"bytes"
+	"io/ioutil"
 	"regexp"
 	"strings"
+	"testing"
 )
 
 func TestParseRss(t *testing.T) {
@@ -35,18 +35,18 @@ func TestParseRss(t *testing.T) {
 	}
 
 	checkItem(t, 0, rss.Channel.Items, Item{
-		Title: "DTNS 2297 – Antitrust Prime",
-		Link: "http://feedproxy.google.com/~r/DailyTechNewsShow/~3/CeBqn9GHRKk/",
+		Title:       "DTNS 2297 – Antitrust Prime",
+		Link:        "http://feedproxy.google.com/~r/DailyTechNewsShow/~3/CeBqn9GHRKk/",
 		Description: "Nate Lanxon is on the show today to chat about the Hachette-Amazon spat, as well as a little on Broadwell chips and the $300 million 60 Tb/s cable Google wants to lay. MP3 Multiple versions (ogg, video etc.) from Archive.org. Please SUBSCRIBE HERE. A special thanks to all our Patreon supporters&#8211;without you, none of this [&#8230;]",
-		PubDate: "Mon, 11 Aug 2014 21:20:36 +0000",
-		Category: "Episode",
-		Guid: "http://www.dailytechnewsshow.com/?p=1844",
+		PubDate:     "Mon, 11 Aug 2014 21:20:36 +0000",
+		Category:    "Episode",
+		Guid:        "http://www.dailytechnewsshow.com/?p=1844",
 		Enclosure: Enclosure{
-		Url: "http://archive.org/download/DTNS20140811/DTNS20140811.mp3",
-		Type: "audio/mpeg"},
+			Url:  "http://archive.org/download/DTNS20140811/DTNS20140811.mp3",
+			Type: "audio/mpeg"},
 		Media: Media{
-		Url: "http://archive.org/download/DTNS20140811/DTNS20140811.mp3",
-		Type: "audio/mpeg"}})
+			Url:  "http://archive.org/download/DTNS20140811/DTNS20140811.mp3",
+			Type: "audio/mpeg"}})
 }
 
 func checkItem(t *testing.T, index int, items []Item, expected Item) {
@@ -92,17 +92,17 @@ func checkItem(t *testing.T, index int, items []Item, expected Item) {
 func Test_WriteReadCycle(t *testing.T) {
 	original := Rss{
 		Channel: Channel{
-			Title: "ChannelTitle",
-			Description: "ChannelDescription",
+			Title:         "ChannelTitle",
+			Description:   "ChannelDescription",
 			LastBuildDate: "Mon, 01 Aug 2014 21:20:36 +0000",
 			Items: []Item{
 				Item{
-					Title: "ItemTitle",
-					Link: "http://item.link",
+					Title:       "ItemTitle",
+					Link:        "http://item.link",
 					Description: "ItemDescription",
-					PubDate: "Mon, 11 Aug 2014 21:20:36 +0000",
-					Category: "tech",
-					Guid: "guid"}}}}
+					PubDate:     "Mon, 11 Aug 2014 21:20:36 +0000",
+					Category:    "tech",
+					Guid:        "guid"}}}}
 
 	parsed, err := ParseRss(strings.NewReader(original.String()))
 

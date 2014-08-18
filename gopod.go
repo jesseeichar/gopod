@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"gopod/config"
+	"gopod/opml"
 	"io"
 	"log"
-	"gopod/opml"
-	"gopod/config"
-	"bufio"
 	"os"
+	"fmt"
 	"gopod/rss"
 )
 
@@ -26,13 +27,12 @@ func backupConfigFile(configDirPath string) {
 }
 
 func loadConfig() (configModel *opml.Opml, configFilePath string) {
-	configDirPath := config.ConfigPathInUserHome();
+	configDirPath := config.ConfigPathInUserHome()
 
 	backupConfigFile(configDirPath)
 
 	configFile := config.ConfigFile(configDirPath)
 	defer configFile.Close()
-
 
 	opmlModel, err := opml.ParseOpml(configFile)
 	if err == io.EOF {
@@ -41,13 +41,14 @@ func loadConfig() (configModel *opml.Opml, configFilePath string) {
 		panic("Unable to parse the subscriptions file: " + configFile.Name() + " due to " + err.Error())
 	}
 
-	return opmlModel, configFile.Name();
+	return opmlModel, configFile.Name()
 }
-func download(index int, configModel *opml.Opml, doneChannel chan bool) {
-	defer func() {doneChannel <- true}()
+func download(index int, configModel *opml.Opml, doneChannel chan error) {
+	var err error
+	defer func() { doneChannel <- err }()
 
 	subscription := &configModel.Body.Outline[index]
-	rss.Download(configModel.Head, subscription)
+	_, err = rss.Download(configModel.Head, subscription);
 }
 func writeUpdatedConfig(configModel *opml.Opml, configFile string) {
 	file, err := os.Create(configFile)
@@ -61,7 +62,6 @@ func writeUpdatedConfig(configModel *opml.Opml, configFile string) {
 	}
 }
 func main() {
-
 	configModel, configFile := loadConfig()
 
 	if configModel.Head.DownloadDir == "" {
@@ -69,16 +69,26 @@ func main() {
 	}
 
 	if configModel.Head.DefaultKeep == 0 {
-		configModel.Head.DefaultKeep = 1;
+		configModel.Head.DefaultKeep = 1
 	}
-	done := make(chan bool)
+	done := make(chan error)
 	for i, _ := range configModel.Body.Outline {
 		go download(i, configModel, done)
 	}
 
+	errors := []error{}
 	for i := 0; i < len(configModel.Body.Outline); i++ {
-		<-done
+		if err := <-done; err != nil {
+			errors = append(errors, err)
+		}
 	}
 
 	writeUpdatedConfig(configModel, configFile)
+
+	if len(errors) > 0 {
+		fmt.Printf("%d errors occurred during execution: \n", len(errors))
+		for _, err := range errors {
+			fmt.Printf("\t%v\n", err)
+		}
+	}
 }

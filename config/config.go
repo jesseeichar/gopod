@@ -1,9 +1,9 @@
 package config
 
 import (
-	"os/user"
-	"os"
 	"gopod/opml"
+	"os"
+	"os/user"
 	"path/filepath"
 )
 
@@ -36,9 +36,9 @@ func openOrCreate(configDirName string, createFunc func(string) (*os.File, error
 
 func openConfigDir(configDirPath string) *os.File {
 	configDir := openOrCreate(configDirPath, func(path string) (*os.File, error) {
-			os.MkdirAll(path, os.ModeDir)
-			return os.Open(path)
-		})
+		os.MkdirAll(path, os.ModeDir)
+		return os.Open(path)
+	})
 	return configDir
 }
 

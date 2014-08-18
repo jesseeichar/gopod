@@ -1,8 +1,8 @@
 package opml
 
 import (
-	"io"
 	"encoding/xml"
+	"io"
 )
 
 func ParseOpml(reader io.Reader) (*Opml, error) {

@@ -1,8 +1,8 @@
 package rss
 
 import (
-	"io"
 	"encoding/xml"
+	"io"
 )
 
 func ParseRss(reader io.Reader) (*Rss, error) {

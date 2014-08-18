@@ -1,10 +1,10 @@
 package opml
 
 import (
-	"io"
-	"encoding/xml"
-	"time"
 	"bytes"
+	"encoding/xml"
+	"io"
+	"time"
 )
 
 type OpmlHead struct {
@@ -24,8 +24,8 @@ type OpmlBody struct {
 }
 type Opml struct {
 	Head    OpmlHead `xml:"head"`
-	Body    OpmlBody  `xml:"body"`
-	Version string  `xml:"version,attr"`
+	Body    OpmlBody `xml:"body"`
+	Version string   `xml:"version,attr"`
 }
 
 func New() Opml {
