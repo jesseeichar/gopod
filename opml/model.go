@@ -17,6 +17,7 @@ type OpmlOutline struct {
 	XmlUrl     string `xml:"xmlUrl,attr"`
 	Keep       int
 	LastUpdate string
+	Title string	 `xml:"title`
 }
 
 type OpmlBody struct {
@@ -51,5 +52,14 @@ func (opml Opml) String() string {
 	}
 
 	return buffer.String()
+}
 
+func (body *OpmlBody) Get(name string) *OpmlOutline {
+	for _, outline := range body.Outline {
+		if outline.Title == name {
+			return &outline
+		}
+	}
+
+	return nil
 }

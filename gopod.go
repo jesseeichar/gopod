@@ -9,6 +9,8 @@ import (
 	"os"
 	"fmt"
 	"gopod/rss"
+	"path/filepath"
+	"sort"
 )
 
 func backupConfigFile(configDirPath string) {
@@ -61,6 +63,61 @@ func writeUpdatedConfig(configModel *opml.Opml, configFile string) {
 		panic("Unable to write updated config file: " + err.Error())
 	}
 }
+func list(filename string) ([]os.FileInfo, error) {
+	downloadDir, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	dirs, err := downloadDir.Readdir(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return dirs, nil
+}
+type SortablePodcast []os.FileInfo
+func (s SortablePodcast) Len() int {
+	return len(s)
+}
+func (s SortablePodcast) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s SortablePodcast) Less(i, j int) bool {
+	return s[i].ModTime().After(s[j].ModTime())
+}
+func deleteOutOfDateFiles(configModel *opml.Opml) error {
+	typeNames, err := list(configModel.Head.DownloadDir)
+	if err != nil {
+		return fmt.Errorf("deleteOutOfDateFile: Unable to list directories in downloadDir: %v", err)
+	}
+
+	for  _, dirName := range typeNames {
+
+		channels, err := list (dirName.Name())
+		if err != nil {
+			return fmt.Errorf("deleteOutOfDateFile: Unable to list channels in %v: %v", dirName.Name(), err)
+		}
+
+		for _, channel := range channels {
+
+			title := filepath.Base(channel.Name())
+			outline := configModel.Body.Get(title)
+			podcasts, err := list(channel.Name())
+
+			if err != nil {
+				return fmt.Errorf("deleteOutOfDateFile: Unable to list podcasts in %v: %v", channel.Name(), err)
+			}
+			sort.Sort(SortablePodcast(podcasts))
+			for  i := range podcasts {
+				if i >= outline.Keep {
+					fmt.Println("Deleting old podcast: %d\n", i)
+				}
+			}
+		}
+	}
+	return nil
+}
 func main() {
 	configModel, configFile := loadConfig()
 
@@ -84,6 +141,10 @@ func main() {
 	}
 
 	writeUpdatedConfig(configModel, configFile)
+
+	if err := deleteOutOfDateFiles(configModel); err != nil {
+		panic(err.Error())
+	}
 
 	if len(errors) > 0 {
 		fmt.Printf("%d errors occurred during execution: \n", len(errors))

@@ -14,12 +14,15 @@ import (
 	"time"
 	"regexp"
 )
+
 type ContentType string
+
 const (
 	audio ContentType = "audio"
-	video  = "video"
-	unknown = "unknown"
+	video             = "video"
+	unknown           = "unknown"
 )
+
 var pathCleanUpRegexp = regexp.MustCompile(`[^a-zA-Z0-9_\-&^!+=\)\(\[\].]`)
 
 func cleanPath(path string) string {
@@ -115,6 +118,8 @@ func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloa
 		return 0, err
 	}
 
+	outline.Title = rssModel.Channel.Title
+
 	podcastItems := rssModel.Channel.Items
 
 	if len(podcastItems) == 0 {
@@ -136,7 +141,7 @@ func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloa
 	}
 
 	for i := 0; i < keep; i++ {
-		podcastItem := podcastItems[0]
+		podcastItem := podcastItems[i]
 		var postcastUrl string
 		if postcastUrl = podcastItem.Enclosure.Url; len(postcastUrl) > 0 {
 			postcastUrl = postcastUrl
@@ -180,11 +185,11 @@ func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloa
 			defer podcast.Close()
 
 			n, err := bufio.NewReader(podcast).WriteTo(dest)
-			log.Printf("Downloaded file with size: %d to %s\n", n, dest.Name())
-
 			if err != nil {
-				return downloadCount, err
+				return downloadCount, fmt.Errorf("Failed to copy %v to %v due to %v", podcastItem.Title, dest, err)
 			}
+
+			log.Printf("Downloaded file with size: %d to %s\n", n, dest.Name())
 		}
 		downloadCount++
 	}
