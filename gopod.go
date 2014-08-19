@@ -92,26 +92,37 @@ func deleteOutOfDateFiles(configModel *opml.Opml) error {
 		return fmt.Errorf("deleteOutOfDateFile: Unable to list directories in downloadDir: %v", err)
 	}
 
-	for  _, dirName := range typeNames {
-
-		channels, err := list (dirName.Name())
+	for  _, dir := range typeNames {
+		dirName := filepath.Join(configModel.Head.DownloadDir, dir.Name())
+		channels, err := list (dirName)
 		if err != nil {
-			return fmt.Errorf("deleteOutOfDateFile: Unable to list channels in %v: %v", dirName.Name(), err)
+			return fmt.Errorf("deleteOutOfDateFile: Unable to list channels in %v: %v", dirName, err)
 		}
 
 		for _, channel := range channels {
-
+			channelDir := filepath.Join(dirName, channel.Name())
 			title := filepath.Base(channel.Name())
-			outline := configModel.Body.Get(title)
-			podcasts, err := list(channel.Name())
+			outline := configModel.Body.GetByDirName(title)
+
+			if outline == nil {
+				panic("Unable to find podcast channel with title: " + title)
+			}
+
+			podcasts, err := list(channelDir)
 
 			if err != nil {
-				return fmt.Errorf("deleteOutOfDateFile: Unable to list podcasts in %v: %v", channel.Name(), err)
+				return fmt.Errorf("deleteOutOfDateFile: Unable to list podcasts in %v: %v", channelDir, err)
 			}
 			sort.Sort(SortablePodcast(podcasts))
-			for  i := range podcasts {
+
+			for  i, podcast := range podcasts {
 				if i >= outline.Keep {
-					fmt.Println("Deleting old podcast: %d\n", i)
+					podcastFile := filepath.Join(channelDir, podcast.Name())
+					log.Printf("Deleting old podcast: %s\n", podcastFile)
+					err := os.Remove(podcastFile)
+					if err != nil {
+						log.Printf("Unable to delete expired podcast: %s", podcastFile)
+					}
 				}
 			}
 		}
@@ -143,7 +154,7 @@ func main() {
 	writeUpdatedConfig(configModel, configFile)
 
 	if err := deleteOutOfDateFiles(configModel); err != nil {
-		panic(err.Error())
+		log.Fatalf("Error occurred while deleting out of date files: %v: ", err)
 	}
 
 	if len(errors) > 0 {

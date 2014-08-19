@@ -119,6 +119,7 @@ func Download(head opml.OpmlHead, outline *opml.OpmlOutline) (numEpisodesDownloa
 	}
 
 	outline.Title = rssModel.Channel.Title
+	outline.DirectoryName = cleanPath(rssModel.Channel.Title)
 
 	podcastItems := rssModel.Channel.Items
 

@@ -14,10 +14,11 @@ type OpmlHead struct {
 }
 
 type OpmlOutline struct {
-	XmlUrl     string `xml:"xmlUrl,attr"`
-	Keep       int
-	LastUpdate string
-	Title string	 `xml:"title`
+	XmlUrl        string `xml:"xmlUrl,attr"`
+	Keep          int
+	LastUpdate    string
+	Title         string     `xml:"title`
+	DirectoryName string `xml:"dir`
 }
 
 type OpmlBody struct {
@@ -54,9 +55,9 @@ func (opml Opml) String() string {
 	return buffer.String()
 }
 
-func (body *OpmlBody) Get(name string) *OpmlOutline {
+func (body *OpmlBody) GetByDirName(name string) *OpmlOutline {
 	for _, outline := range body.Outline {
-		if outline.Title == name {
+		if outline.DirectoryName == name {
 			return &outline
 		}
 	}
